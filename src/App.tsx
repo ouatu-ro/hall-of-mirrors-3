@@ -2,7 +2,6 @@ import { createSignal, createEffect } from "solid-js";
 import { createStore } from "solid-js/store";
 
 /** TYPES **/
-
 type FixedNumbers = {
   top: { [key: number]: number };
   left: { [key: number]: number };
@@ -12,11 +11,10 @@ type FixedNumbers = {
 
 type MirrorType = "/" | "\\";
 
-// Original big lines you might have had
 type Line = {
   start: [number, number]; // (row,col) in the 9x9
   end: [number, number];
-  color?: string; // e.g. "red" or "green" for lasers
+  color?: string; // "green" or "red"
 };
 
 type LaserOutput = {
@@ -24,12 +22,12 @@ type LaserOutput = {
   color: "red" | "green";
 };
 
-/** MAIN STORE (NO laser results here) **/
+/** MAIN STORE (no laser lines/outputs) **/
 const [store, setStore] = createStore<{
   fixedNumbers: FixedNumbers;
   mirrors: { [key: string]: MirrorType };
   grid: string[][];
-  lines: Line[]; // any original big lines you want to keep
+  lines: Line[]; // any original lines you want to keep
 }>({
   fixedNumbers: {
     top: { 3: 9 },
@@ -42,13 +40,17 @@ const [store, setStore] = createStore<{
   lines: [],
 });
 
-/** SIGNALS FOR LASER DATA (EPHEMERAL) **/
+/** SIGNALS FOR LASER DATA **/
 const [laserLines, setLaserLines] = createSignal<Line[]>([]);
 const [laserOutputs, setLaserOutputs] = createSignal<{
   [key: string]: LaserOutput;
 }>({});
 
-/** 1) Mirror toggling: left-click => "/", right-click => "\" **/
+/** ADDITIONAL SIGNALS FOR SHOW/HIDE OF GREEN/RED LINES **/
+const [showGreen, setShowGreen] = createSignal(true);
+const [showRed, setShowRed] = createSignal(true);
+
+/** MIRROR TOGGLING (left-click "/", right-click "\") **/
 function handleMirrorClick(row: number, col: number, event: MouseEvent) {
   event.preventDefault(); // no default context menu
 
@@ -72,11 +74,9 @@ function handleMirrorClick(row: number, col: number, event: MouseEvent) {
   }
 }
 
-/** 2) Reflection logic (SWAPPED) **/
-// "/" now behaves like old "\":
-//   up => left, down => right, left => up, right => down
-// "\" now behaves like old "/":
-//   up => right, down => left, left => down, right => up
+/** REFLECTION LOGIC (SWAPPED) **/
+// "/" => old "\": up => left, down => right, left => up, right => down
+// "\" => old "/": up => right, down => left, left => down, right => up
 function reflectDirection(
   dx: number,
   dy: number,
@@ -97,11 +97,11 @@ function reflectDirection(
   return [dx, dy]; // fallback
 }
 
-/** 3) Shoot a single laser **/
+/** SHOOT A SINGLE LASER **/
 type ShootResult = {
   segments: Line[];
-  product: number; // multiply # of steps for each run
-  finalDot: [number, number]; // where the laser stops
+  product: number;
+  finalDot: [number, number];
 };
 
 function shootLaser(
@@ -141,12 +141,12 @@ function shootLaser(
       return { segments, product, finalDot: [row, col] };
     }
 
-    // If in center => check for mirror
+    // Center 5×5 => check mirror
     if (row >= 2 && row <= 6 && col >= 2 && col <= 6) {
       const mirrorKey = `${row - 2},${col - 2}`;
       const mirror = store.mirrors[mirrorKey];
       if (mirror) {
-        // End this segment
+        // End segment
         segments.push({ start: segStart, end: [row, col] });
         product *= steps;
 
@@ -161,7 +161,7 @@ function shootLaser(
   }
 }
 
-/** 4) Place final product in outer ring **/
+/** PLACE FINAL PRODUCT IN OUTER RING **/
 function outerCellForDot(r: number, c: number): [number, number] {
   if (r === 1) return [0, c];
   if (r === 7) return [8, c];
@@ -170,199 +170,221 @@ function outerCellForDot(r: number, c: number): [number, number] {
   return [r, c]; // fallback
 }
 
-/** 5) Main App Component **/
+/** MAIN COMPONENT **/
 export default function App() {
-  // Recompute lasers in a createEffect that depends on store.mirrors
+  // Recompute lasers whenever mirrors change
   createEffect(() => {
-    // read store.mirrors => triggers effect on mount + whenever mirrors change
-    void store.mirrors;
+    void store.mirrors; // track dependency
 
-    // Build ephemeral arrays/objects
-    const newLines: Line[] = [];
+    const newLines: Line[] = {};
     const newOutputs: { [key: string]: LaserOutput } = {};
 
-    // 1) Top
+    const linesArray: Line[] = [];
+    const outputsMap: { [key: string]: LaserOutput } = {};
+
+    // Shoot from top
     for (const [colStr, value] of Object.entries(store.fixedNumbers.top)) {
       const col = +colStr + 1;
       const { segments, product, finalDot } = shootLaser(1, col, 1, 0);
       const color = product === value ? "green" : "red";
       segments.forEach((s) => (s.color = color));
-      newLines.push(...segments);
+      linesArray.push(...segments);
 
       const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
       if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        newOutputs[`${nr},${nc}`] = { product, color };
+        outputsMap[`${nr},${nc}`] = { product, color };
       }
     }
 
-    // 2) Bottom
+    // Bottom
     for (const [colStr, value] of Object.entries(store.fixedNumbers.bottom)) {
       const col = +colStr + 1;
       const { segments, product, finalDot } = shootLaser(7, col, -1, 0);
       const color = product === value ? "green" : "red";
       segments.forEach((s) => (s.color = color));
-      newLines.push(...segments);
+      linesArray.push(...segments);
 
       const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
       if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        newOutputs[`${nr},${nc}`] = { product, color };
+        outputsMap[`${nr},${nc}`] = { product, color };
       }
     }
 
-    // 3) Left
+    // Left
     for (const [rowStr, value] of Object.entries(store.fixedNumbers.left)) {
       const row = +rowStr + 1;
       const { segments, product, finalDot } = shootLaser(row, 1, 0, 1);
       const color = product === value ? "green" : "red";
       segments.forEach((s) => (s.color = color));
-      newLines.push(...segments);
+      linesArray.push(...segments);
 
       const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
       if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        newOutputs[`${nr},${nc}`] = { product, color };
+        outputsMap[`${nr},${nc}`] = { product, color };
       }
     }
 
-    // 4) Right
+    // Right
     for (const [rowStr, value] of Object.entries(store.fixedNumbers.right)) {
       const row = +rowStr + 1;
       const { segments, product, finalDot } = shootLaser(row, 7, 0, -1);
       const color = product === value ? "green" : "red";
       segments.forEach((s) => (s.color = color));
-      newLines.push(...segments);
+      linesArray.push(...segments);
 
       const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
       if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        newOutputs[`${nr},${nc}`] = { product, color };
+        outputsMap[`${nr},${nc}`] = { product, color };
       }
     }
 
-    // Set them in signals (not in the store!)
-    setLaserLines(newLines);
-    setLaserOutputs(newOutputs);
+    // Set them in signals
+    setLaserLines(linesArray);
+    setLaserOutputs(outputsMap);
   });
 
   return (
-    <div class="grid-container">
-      {/* Render the 9×9 grid */}
-      {Array.from({ length: 9 }).map((_, row) =>
-        Array.from({ length: 9 }).map((_, col) => {
-          // Outer ring
-          if (row === 0 || row === 8 || col === 0 || col === 8) {
-            // Original number?
-            const fixedNum =
-              (row === 0 && store.fixedNumbers.top[col - 1]) ||
-              (row === 8 && store.fixedNumbers.bottom[col - 1]) ||
-              (col === 0 && store.fixedNumbers.left[row - 1]) ||
-              (col === 8 && store.fixedNumbers.right[row - 1]);
+    <div>
+      {/* Buttons to toggle lines */}
+      <div style="margin-bottom: 10px;">
+        <button onClick={() => setShowGreen(!showGreen())}>
+          {showGreen() ? "Hide Green Lines" : "Show Green Lines"}
+        </button>
+        <button
+          onClick={() => setShowRed(!showRed())}
+          style="margin-left: 10px;"
+        >
+          {showRed() ? "Hide Red Lines" : "Show Red Lines"}
+        </button>
+      </div>
 
-            // Laser result?
-            const outKey = `${row},${col}`;
-            const laserOut = laserOutputs()[outKey];
+      <div class="grid-container">
+        {/* Render the 9×9 grid */}
+        {Array.from({ length: 9 }).map((_, row) =>
+          Array.from({ length: 9 }).map((_, col) => {
+            // Outer ring
+            if (row === 0 || row === 8 || col === 0 || col === 8) {
+              // Original number?
+              const fixedNum =
+                (row === 0 && store.fixedNumbers.top[col - 1]) ||
+                (row === 8 && store.fixedNumbers.bottom[col - 1]) ||
+                (col === 0 && store.fixedNumbers.left[row - 1]) ||
+                (col === 8 && store.fixedNumbers.right[row - 1]);
 
+              // Laser result?
+              const outKey = `${row},${col}`;
+              const laserOut = laserOutputs()[outKey];
+
+              return (
+                <div class="number">
+                  {fixedNum}
+                  {laserOut && (
+                    <span style={{ color: laserOut.color }}>
+                      {" "}
+                      ({laserOut.product})
+                    </span>
+                  )}
+                </div>
+              );
+            }
+
+            // Inner dots
+            if (
+              (row === 1 || row === 7 || col === 1 || col === 7) &&
+              !(row === 1 && col === 1) &&
+              !(row === 1 && col === 7) &&
+              !(row === 7 && col === 1) &&
+              !(row === 7 && col === 7)
+            ) {
+              return <div class="dot">•</div>;
+            }
+
+            // Center => mirrors
             return (
-              <div class="number">
-                {fixedNum}
-                {laserOut && (
-                  <span style={{ color: laserOut.color }}>
-                    {" "}
-                    ({laserOut.product})
-                  </span>
-                )}
+              <div
+                class="grid-cell"
+                onMouseDown={(e) => handleMirrorClick(row - 2, col - 2, e)}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <svg class="mirror-overlay">
+                  {store.mirrors[`${row - 2},${col - 2}`] === "/" && (
+                    <line
+                      x1="5"
+                      y1="5"
+                      x2="45"
+                      y2="45"
+                      stroke="black"
+                      stroke-width="2"
+                    />
+                  )}
+                  {store.mirrors[`${row - 2},${col - 2}`] === "\\" && (
+                    <line
+                      x1="5"
+                      y1="45"
+                      x2="45"
+                      y2="5"
+                      stroke="black"
+                      stroke-width="2"
+                    />
+                  )}
+                </svg>
               </div>
             );
-          }
+          })
+        )}
 
-          // Inner dots
-          if (
-            (row === 1 || row === 7 || col === 1 || col === 7) &&
-            !(row === 1 && col === 1) &&
-            !(row === 1 && col === 7) &&
-            !(row === 7 && col === 1) &&
-            !(row === 7 && col === 7)
-          ) {
-            return <div class="dot">•</div>;
-          }
+        {/* 1) Original big lines (if any) */}
+        <svg class="line-overlay">
+          {store.lines.map(({ start, end, color }, i) => {
+            const cellSize = 50;
+            const offset = 25;
+            const x1 = start[1] * cellSize + offset;
+            const y1 = start[0] * cellSize + offset;
+            const x2 = end[1] * cellSize + offset;
+            const y2 = end[0] * cellSize + offset;
+            return (
+              <line
+                key={i}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={color || "black"}
+                stroke-width="2"
+              />
+            );
+          })}
+        </svg>
 
-          // Center 5×5 => mirrors
-          return (
-            <div
-              class="grid-cell"
-              onMouseDown={(e) => handleMirrorClick(row - 2, col - 2, e)}
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              <svg class="mirror-overlay">
-                {store.mirrors[`${row - 2},${col - 2}`] === "/" && (
-                  <line
-                    x1="5"
-                    y1="5"
-                    x2="45"
-                    y2="45"
-                    stroke="black"
-                    stroke-width="2"
-                  />
-                )}
-                {store.mirrors[`${row - 2},${col - 2}`] === "\\" && (
-                  <line
-                    x1="5"
-                    y1="45"
-                    x2="45"
-                    y2="5"
-                    stroke="black"
-                    stroke-width="2"
-                  />
-                )}
-              </svg>
-            </div>
-          );
-        })
-      )}
-
-      {/* 1) Original big lines (if any) */}
-      <svg class="line-overlay">
-        {store.lines.map(({ start, end, color }, i) => {
-          const cellSize = 50;
-          const offset = 25;
-          const x1 = start[1] * cellSize + offset;
-          const y1 = start[0] * cellSize + offset;
-          const x2 = end[1] * cellSize + offset;
-          const y2 = end[0] * cellSize + offset;
-          return (
-            <line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={color || "black"}
-              stroke-width="2"
-            />
-          );
-        })}
-      </svg>
-
-      {/* 2) Laser lines from ephemeral signal (colored green/red) */}
-      <svg class="line-overlay">
-        {laserLines().map(({ start, end, color }, i) => {
-          const cellSize = 50;
-          const offset = 25;
-          const x1 = start[1] * cellSize + offset;
-          const y1 = start[0] * cellSize + offset;
-          const x2 = end[1] * cellSize + offset;
-          const y2 = end[0] * cellSize + offset;
-          return (
-            <line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={color || "red"}
-              stroke-width="2"
-            />
-          );
-        })}
-      </svg>
+        {/* 2) Laser lines, filtered by showGreen/showRed */}
+        <svg class="line-overlay">
+          {laserLines()
+            .filter(
+              (line) =>
+                (line.color === "green" && showGreen()) ||
+                (line.color === "red" && showRed())
+            )
+            .map(({ start, end, color }, i) => {
+              const cellSize = 50;
+              const offset = 25;
+              const x1 = start[1] * cellSize + offset;
+              const y1 = start[0] * cellSize + offset;
+              const x2 = end[1] * cellSize + offset;
+              const y2 = end[0] * cellSize + offset;
+              return (
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={color || "red"}
+                  stroke-width="2"
+                />
+              );
+            })}
+        </svg>
+      </div>
     </div>
   );
 }
