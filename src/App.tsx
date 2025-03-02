@@ -12,7 +12,7 @@ type FixedNumbers = {
 type MirrorType = "/" | "\\";
 
 type Line = {
-  start: [number, number]; // (row,col) in the 9x9
+  start: [number, number]; // (row,col) in the total grid
   end: [number, number];
   color?: string; // "green" or "red"
 };
@@ -22,21 +22,30 @@ type LaserOutput = {
   color: "red" | "green";
 };
 
-/** MAIN STORE (no laser lines/outputs) **/
+/** CONFIGURABLE SIZES **/
+// E.g. a 10×10 center
+const centerSize = 10;
+// We add 2 rings on each side => totalSize = centerSize + 4
+//  (1 outer ring + 1 inner ring) × 2
+const totalSize = centerSize + 4;
+// Index of the last row/column
+const last = totalSize - 1;
+
+/** MAIN STORE (NO laser lines/outputs) **/
 const [store, setStore] = createStore<{
   fixedNumbers: FixedNumbers;
   mirrors: { [key: string]: MirrorType };
-  grid: string[][];
-  lines: Line[]; // any original lines you want to keep
+  lines: Line[]; // any original big lines you might have
 }>({
+  // Example: place numbers on top/bottom/left/right
+  // For "top: { 6: 9 }" => means col=6 in the outer ring => dot is row=1,col=6 => direction down
   fixedNumbers: {
-    top: { 3: 9 },
-    left: { 4: 16 },
-    right: { 2: 75 },
-    bottom: { 3: 36 },
+    top: { 4: 112, 6: 48, 7: 3087, 8: 9, 11: 1 }, // e.g. col=6 => number=9
+    left: { 5: 27, 9: 12, 10: 225 },
+    right: { 3: 4, 4: 27, 8: 16 },
+    bottom: { 2: 2025, 5: 12, 6: 64, 7: 5, 9: 405 },
   },
   mirrors: {},
-  grid: Array.from({ length: 5 }, () => Array(5).fill("")),
   lines: [],
 });
 
@@ -46,11 +55,7 @@ const [laserOutputs, setLaserOutputs] = createSignal<{
   [key: string]: LaserOutput;
 }>({});
 
-/** ADDITIONAL SIGNALS FOR SHOW/HIDE OF GREEN/RED LINES **/
-const [showGreen, setShowGreen] = createSignal(true);
-const [showRed, setShowRed] = createSignal(true);
-
-/** MIRROR TOGGLING (left-click "/", right-click "\") **/
+/** MIRROR TOGGLING **/
 function handleMirrorClick(row: number, col: number, event: MouseEvent) {
   event.preventDefault(); // no default context menu
 
@@ -98,11 +103,11 @@ function reflectDirection(
 }
 
 /** SHOOT A SINGLE LASER **/
-type ShootResult = {
+interface ShootResult {
   segments: Line[];
   product: number;
   finalDot: [number, number];
-};
+}
 
 function shootLaser(
   startRow: number,
@@ -125,15 +130,17 @@ function shootLaser(
     steps++;
 
     // Out of bounds => stop
-    if (row < 0 || row > 8 || col < 0 || col > 8) {
+    if (row < 0 || row > last || col < 0 || col > last) {
       segments.push({ start: segStart, end: [row, col] });
       product *= steps;
       return { segments, product, finalDot: [row, col] };
     }
 
-    // If we reach row=1|7 or col=1|7 (outer dot) that's not the start => stop
+    // If we reach the "inner ring" (row=1|last-1 or col=1|last-1)
+    // that's not the same as the start => stop
+    // This is the "outer dot" logic in your puzzle
     if (
-      (row === 1 || row === 7 || col === 1 || col === 7) &&
+      (row === 1 || row === last - 1 || col === 1 || col === last - 1) &&
       !(row === startRow && col === startCol)
     ) {
       segments.push({ start: segStart, end: [row, col] });
@@ -141,12 +148,13 @@ function shootLaser(
       return { segments, product, finalDot: [row, col] };
     }
 
-    // Center 5×5 => check mirror
-    if (row >= 2 && row <= 6 && col >= 2 && col <= 6) {
+    // If in center => check for mirror
+    // center is row=2..(last-2), col=2..(last-2)
+    if (row >= 2 && row <= last - 2 && col >= 2 && col <= last - 2) {
       const mirrorKey = `${row - 2},${col - 2}`;
       const mirror = store.mirrors[mirrorKey];
       if (mirror) {
-        // End segment
+        // End the current segment
         segments.push({ start: segStart, end: [row, col] });
         product *= steps;
 
@@ -161,91 +169,99 @@ function shootLaser(
   }
 }
 
-/** PLACE FINAL PRODUCT IN OUTER RING **/
+/** WHERE TO PLACE THE FINAL PRODUCT IN THE OUTER RING? **/
 function outerCellForDot(r: number, c: number): [number, number] {
+  // If dot = row=1 => final product at row=0
   if (r === 1) return [0, c];
-  if (r === 7) return [8, c];
+  // If dot = row=last-1 => final product at row=last
+  if (r === last - 1) return [last, c];
+  // If dot = col=1 => final product at col=0
   if (c === 1) return [r, 0];
-  if (c === 7) return [r, 8];
-  return [r, c]; // fallback
+  // If dot = col=last-1 => final product at col=last
+  if (c === last - 1) return [r, last];
+  // fallback
+  return [r, c];
 }
 
-/** MAIN COMPONENT **/
-export default function App() {
-  // Recompute lasers whenever mirrors change
-  createEffect(() => {
-    void store.mirrors; // track dependency
+/** CREATEEFFECT: SHOOT ALL LASERS WHEN MIRRORS CHANGE **/
+createEffect(() => {
+  // Depend on store.mirrors => triggers on mount + whenever mirrors change
+  void store.mirrors;
 
-    const newLines: Line[] = {};
-    const newOutputs: { [key: string]: LaserOutput } = {};
+  const newLines: Line[] = [];
+  const newOutputs: { [key: string]: LaserOutput } = {};
 
-    const linesArray: Line[] = [];
-    const outputsMap: { [key: string]: LaserOutput } = {};
+  // Shoot from top
+  // For "top: { 6: 9 }", that means col=6 => number=9 => dot is row=1, col=6 => direction=down
+  for (const [colStr, value] of Object.entries(store.fixedNumbers.top)) {
+    const col = +colStr; // e.g. "6" => 6
+    const { segments, product, finalDot } = shootLaser(1, col, 1, 0);
+    const color = product === value ? "green" : "red";
+    segments.forEach((s) => (s.color = color));
+    newLines.push(...segments);
 
-    // Shoot from top
-    for (const [colStr, value] of Object.entries(store.fixedNumbers.top)) {
-      const col = +colStr + 1;
-      const { segments, product, finalDot } = shootLaser(1, col, 1, 0);
-      const color = product === value ? "green" : "red";
-      segments.forEach((s) => (s.color = color));
-      linesArray.push(...segments);
-
-      const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
-      if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        outputsMap[`${nr},${nc}`] = { product, color };
-      }
+    const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
+    if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
+      newOutputs[`${nr},${nc}`] = { product, color };
     }
+  }
 
-    // Bottom
-    for (const [colStr, value] of Object.entries(store.fixedNumbers.bottom)) {
-      const col = +colStr + 1;
-      const { segments, product, finalDot } = shootLaser(7, col, -1, 0);
-      const color = product === value ? "green" : "red";
-      segments.forEach((s) => (s.color = color));
-      linesArray.push(...segments);
+  // Bottom
+  // For "bottom: { 6: 36 }" => col=6 => dot is row=last-1 => direction=up
+  for (const [colStr, value] of Object.entries(store.fixedNumbers.bottom)) {
+    const col = +colStr;
+    const { segments, product, finalDot } = shootLaser(last - 1, col, -1, 0);
+    const color = product === value ? "green" : "red";
+    segments.forEach((s) => (s.color = color));
+    newLines.push(...segments);
 
-      const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
-      if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        outputsMap[`${nr},${nc}`] = { product, color };
-      }
+    const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
+    if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
+      newOutputs[`${nr},${nc}`] = { product, color };
     }
+  }
 
-    // Left
-    for (const [rowStr, value] of Object.entries(store.fixedNumbers.left)) {
-      const row = +rowStr + 1;
-      const { segments, product, finalDot } = shootLaser(row, 1, 0, 1);
-      const color = product === value ? "green" : "red";
-      segments.forEach((s) => (s.color = color));
-      linesArray.push(...segments);
+  // Left
+  // For "left: { 7: 16 }" => row=7 => dot is col=1 => direction=right
+  for (const [rowStr, value] of Object.entries(store.fixedNumbers.left)) {
+    const row = +rowStr;
+    const { segments, product, finalDot } = shootLaser(row, 1, 0, 1);
+    const color = product === value ? "green" : "red";
+    segments.forEach((s) => (s.color = color));
+    newLines.push(...segments);
 
-      const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
-      if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        outputsMap[`${nr},${nc}`] = { product, color };
-      }
+    const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
+    if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
+      newOutputs[`${nr},${nc}`] = { product, color };
     }
+  }
 
-    // Right
-    for (const [rowStr, value] of Object.entries(store.fixedNumbers.right)) {
-      const row = +rowStr + 1;
-      const { segments, product, finalDot } = shootLaser(row, 7, 0, -1);
-      const color = product === value ? "green" : "red";
-      segments.forEach((s) => (s.color = color));
-      linesArray.push(...segments);
+  // Right
+  // For "right: { 4: 75 }" => row=4 => dot is col=last-1 => direction=left
+  for (const [rowStr, value] of Object.entries(store.fixedNumbers.right)) {
+    const row = +rowStr;
+    const { segments, product, finalDot } = shootLaser(row, last - 1, 0, -1);
+    const color = product === value ? "green" : "red";
+    segments.forEach((s) => (s.color = color));
+    newLines.push(...segments);
 
-      const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
-      if (nr >= 0 && nr <= 8 && nc >= 0 && nc <= 8) {
-        outputsMap[`${nr},${nc}`] = { product, color };
-      }
+    const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
+    if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
+      newOutputs[`${nr},${nc}`] = { product, color };
     }
+  }
 
-    // Set them in signals
-    setLaserLines(linesArray);
-    setLaserOutputs(outputsMap);
-  });
+  // Update signals
+  setLaserLines(newLines);
+  setLaserOutputs(newOutputs);
+});
 
+const [showGreen, setShowGreen] = createSignal(true);
+const [showRed, setShowRed] = createSignal(true);
+
+function App() {
   return (
-    <div>
-      {/* Buttons to toggle lines */}
+    <>
       <div style="margin-bottom: 10px;">
         <button onClick={() => setShowGreen(!showGreen())}>
           {showGreen() ? "Hide Green Lines" : "Show Green Lines"}
@@ -257,27 +273,42 @@ export default function App() {
           {showRed() ? "Hide Red Lines" : "Show Red Lines"}
         </button>
       </div>
-
       <div class="grid-container">
-        {/* Render the 9×9 grid */}
-        {Array.from({ length: 9 }).map((_, row) =>
-          Array.from({ length: 9 }).map((_, col) => {
-            // Outer ring
-            if (row === 0 || row === 8 || col === 0 || col === 8) {
-              // Original number?
-              const fixedNum =
-                (row === 0 && store.fixedNumbers.top[col - 1]) ||
-                (row === 8 && store.fixedNumbers.bottom[col - 1]) ||
-                (col === 0 && store.fixedNumbers.left[row - 1]) ||
-                (col === 8 && store.fixedNumbers.right[row - 1]);
+        {/* Render a totalSize × totalSize grid */}
+        {Array.from({ length: totalSize }).map((_, row) =>
+          Array.from({ length: totalSize }).map((_, col) => {
+            // Outer ring => row=0|last or col=0|last
+            if (row === 0 || row === last || col === 0 || col === last) {
+              // If there's a fixed number here:
+              // We interpret the "key" in top/bottom/left/right to find if it matches
+              // But simpler is to just check the laserOutputs plus show the original if it lines up
+              let fixedNum: number | undefined = undefined;
+              // top => row=0 => col => store.fixedNumbers.top[col], but we used "colStr => col" logic above
+              if (row === 0 && store.fixedNumbers.top[col] !== undefined) {
+                fixedNum = store.fixedNumbers.top[col];
+              } else if (
+                row === last &&
+                store.fixedNumbers.bottom[col] !== undefined
+              ) {
+                fixedNum = store.fixedNumbers.bottom[col];
+              } else if (
+                col === 0 &&
+                store.fixedNumbers.left[row] !== undefined
+              ) {
+                fixedNum = store.fixedNumbers.left[row];
+              } else if (
+                col === last &&
+                store.fixedNumbers.right[row] !== undefined
+              ) {
+                fixedNum = store.fixedNumbers.right[row];
+              }
 
-              // Laser result?
-              const outKey = `${row},${col}`;
-              const laserOut = laserOutputs()[outKey];
+              // If there's a final product from lasers
+              const laserOut = laserOutputs()[`${row},${col}`];
 
               return (
                 <div class="number">
-                  {fixedNum}
+                  {fixedNum !== undefined && fixedNum}
                   {laserOut && (
                     <span style={{ color: laserOut.color }}>
                       {" "}
@@ -288,18 +319,24 @@ export default function App() {
               );
             }
 
-            // Inner dots
+            // Inner ring => row=1|last-1 or col=1|last-1 (dots)
             if (
-              (row === 1 || row === 7 || col === 1 || col === 7) &&
-              !(row === 1 && col === 1) &&
-              !(row === 1 && col === 7) &&
-              !(row === 7 && col === 1) &&
-              !(row === 7 && col === 7)
+              (row === 1 ||
+                row === last - 1 ||
+                col === 1 ||
+                col === last - 1) &&
+              !(
+                (row === 1 && col === 1) ||
+                (row === 1 && col === last - 1) ||
+                (row === last - 1 && col === 1) ||
+                (row === last - 1 && col === last - 1)
+              )
             ) {
               return <div class="dot">•</div>;
             }
 
-            // Center => mirrors
+            // Center => row=2..(last-2), col=2..(last-2)
+            // Mirrors are stored with keys = (row-2,col-2)
             return (
               <div
                 class="grid-cell"
@@ -333,11 +370,12 @@ export default function App() {
           })
         )}
 
-        {/* 1) Original big lines (if any) */}
+        {/* Original big lines (if any) */}
         <svg class="line-overlay">
           {store.lines.map(({ start, end, color }, i) => {
-            const cellSize = 50;
-            const offset = 25;
+            // Convert (row,col) to pixels
+            const cellSize = 50; // adjust as needed
+            const offset = 25; // center lines
             const x1 = start[1] * cellSize + offset;
             const y1 = start[0] * cellSize + offset;
             const x2 = end[1] * cellSize + offset;
@@ -356,7 +394,7 @@ export default function App() {
           })}
         </svg>
 
-        {/* 2) Laser lines, filtered by showGreen/showRed */}
+        {/* Laser lines */}
         <svg class="line-overlay">
           {laserLines()
             .filter(
@@ -385,6 +423,8 @@ export default function App() {
             })}
         </svg>
       </div>
-    </div>
+    </>
   );
 }
+
+export default App;
