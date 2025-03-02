@@ -26,6 +26,11 @@
   cursor: pointer;
 }
 
+.dot {
+  font-size: 18px;
+  color: black;
+}
+
 .mirror-overlay {
   position: absolute;
   top: 0;
