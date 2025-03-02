@@ -7,22 +7,35 @@ type FixedNumbers = {
   bottom: { [key: number]: number };
 };
 
+type Line = {
+  start: [number, number]; // [row, col]
+  end: [number, number]; // [row, col]
+};
+
 export const [store, setStore] = createStore<{
   fixedNumbers: FixedNumbers;
   grid: string[][];
+  lines: Line[];
 }>({
   fixedNumbers: {
     top: { 3: 9 },
     left: { 4: 16 },
     right: { 2: 75 },
     bottom: { 3: 36 },
-  }, // Fixed positions
-  grid: Array.from({ length: 5 }, () => Array(5).fill("")), // 5x5 grid values
+  },
+  grid: Array.from({ length: 5 }, () => Array(5).fill("")),
+  lines: [], // Store drawn lines
 });
+
+// Function to add a line
+const addLine = (start: [number, number], end: [number, number]) => {
+  setStore("lines", (lines) => [...lines, { start, end }]);
+};
 
 const App = () => {
   return (
     <div class="grid-container">
+      {/* Render the grid */}
       {Array.from({ length: 9 }).map((_, row) =>
         Array.from({ length: 9 }).map((_, col) => {
           // Outer circle: Numbers
@@ -52,6 +65,29 @@ const App = () => {
           return <div class="grid-cell">{store.grid[row - 2]?.[col - 2]}</div>;
         })
       )}
+
+      {/* SVG Overlay for Lines */}
+      <svg class="line-overlay">
+        {store.lines.map(({ start, end }) => {
+          const cellSize = 50; // Adjust based on your grid cell size
+          const offset = 25; // Half of cell size for centering
+          const x1 = start[1] * cellSize + offset;
+          const y1 = start[0] * cellSize + offset;
+          const x2 = end[1] * cellSize + offset;
+          const y2 = end[0] * cellSize + offset;
+
+          return (
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="black"
+              stroke-width="2"
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 };
