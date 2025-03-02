@@ -8,14 +8,17 @@ type FixedNumbers = {
 };
 
 type Line = {
-  start: [number, number]; // [row, col]
-  end: [number, number]; // [row, col]
+  start: [number, number];
+  end: [number, number];
 };
+
+type MirrorType = "/" | "\\";
 
 export const [store, setStore] = createStore<{
   fixedNumbers: FixedNumbers;
   grid: string[][];
   lines: Line[];
+  mirrors: { [key: string]: MirrorType };
 }>({
   fixedNumbers: {
     top: { 3: 9 },
@@ -24,18 +27,43 @@ export const [store, setStore] = createStore<{
     bottom: { 3: 36 },
   },
   grid: Array.from({ length: 5 }, () => Array(5).fill("")),
-  lines: [], // Store drawn lines
+  lines: [],
+  mirrors: {},
 });
 
-// Function to add a line
-const addLine = (start: [number, number], end: [number, number]) => {
-  setStore("lines", (lines) => [...lines, { start, end }]);
+// Toggle mirrors via left/right clicks
+const handleMirrorClick = (row: number, col: number, event: MouseEvent) => {
+  event.preventDefault(); // Prevents default right-click menu
+
+  const key = `${row},${col}`;
+  const currentMirror = store.mirrors[key];
+
+  if (event.button === 0) {
+    // Left Click → Toggle "/"
+    if (currentMirror === "/") {
+      // Remove existing "/"
+      setStore("mirrors", key, undefined);
+    } else {
+      // Place "/"
+      setStore("mirrors", key, "/");
+    }
+  } else if (event.button === 2) {
+    // Right Click → Toggle "\"
+    if (currentMirror === "\\") {
+      // Remove existing "\"
+      setStore("mirrors", key, undefined);
+    } else {
+      // Place "\"
+      setStore("mirrors", key, "\\");
+    }
+  }
 };
 
 const App = () => {
   return (
     <div class="grid-container">
-      {/* Render the grid */}
+      {/* 1) Render the 9x9 grid */}
+
       {Array.from({ length: 9 }).map((_, row) =>
         Array.from({ length: 9 }).map((_, col) => {
           // Outer circle: Numbers
@@ -62,15 +90,47 @@ const App = () => {
           }
 
           // Center: 5x5 Grid
-          return <div class="grid-cell">{store.grid[row - 2]?.[col - 2]}</div>;
+          return (
+            <div
+              class="grid-cell"
+              onMouseDown={(event) =>
+                handleMirrorClick(row - 2, col - 2, event)
+              }
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              {/* 2) Render a small SVG inside each cell for the mirror */}
+              <svg class="mirror-overlay">
+                {store.mirrors[`${row - 2},${col - 2}`] === "/" && (
+                  <line
+                    x1="5"
+                    y1="5"
+                    x2="45"
+                    y2="45"
+                    stroke="black"
+                    stroke-width="2"
+                  />
+                )}
+                {store.mirrors[`${row - 2},${col - 2}`] === "\\" && (
+                  <line
+                    x1="5"
+                    y1="45"
+                    x2="45"
+                    y2="5"
+                    stroke="black"
+                    stroke-width="2"
+                  />
+                )}
+              </svg>
+            </div>
+          );
         })
       )}
 
-      {/* SVG Overlay for Lines */}
+      {/* 3) SVG overlay for big lines between cells */}
       <svg class="line-overlay">
         {store.lines.map(({ start, end }) => {
-          const cellSize = 50; // Adjust based on your grid cell size
-          const offset = 25; // Half of cell size for centering
+          const cellSize = 50;
+          const offset = 25;
           const x1 = start[1] * cellSize + offset;
           const y1 = start[0] * cellSize + offset;
           const x2 = end[1] * cellSize + offset;
