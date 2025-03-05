@@ -8,7 +8,7 @@ type FixedNumbers = {
   right: { [key: number]: number };
   bottom: { [key: number]: number };
 };
-
+console.log("CI/CD test");
 type MirrorType = "/" | "\\";
 
 type Line = {
@@ -200,9 +200,6 @@ function outerCellForDot(r: number, c: number): [number, number] {
 
 /** CREATEEFFECT: SHOOT ALL LASERS WHEN MIRRORS CHANGE **/
 createEffect(() => {
-  // Depend on store.mirrors => triggers on mount + whenever mirrors change
-  void store.mirrors;
-
   const newLines: Line[] = [];
   const newOutputs: { [key: string]: LaserOutput } = {};
 
@@ -265,8 +262,6 @@ createEffect(() => {
       newOutputs[`${nr},${nc}`] = { product, color };
     }
   }
-
-  // Update signals
   setLaserLines(newLines);
   setLaserOutputs(newOutputs);
 });
