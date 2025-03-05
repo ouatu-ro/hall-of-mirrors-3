@@ -1,0 +1,32 @@
+name: Build on Production Push
+
+on:
+  push:
+    branches:
+      - prod # Trigger on pushes to the prod branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Runs on GitHub's Ubuntu runner
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # Clones the repo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18 # Use a Node.js version compatible with Vite
+          cache: npm # Cache dependencies for faster builds
+
+      - name: Install Dependencies
+        run: npm install # Installs project dependencies
+
+      - name: Build Project
+        run: npm run build # Runs the Vite build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vite-build
+          path: dist # Adjust this if your build output folder is different
