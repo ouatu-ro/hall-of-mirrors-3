@@ -79,6 +79,21 @@ function handleMirrorClick(row: number, col: number, event: MouseEvent) {
   }
 }
 
+function handleMirrorTouchEnd(row: number, col: number, event: TouchEvent) {
+  event.preventDefault(); // prevent emulated mouse events
+  const key = `${row},${col}`;
+  const current = store.mirrors[key];
+
+  // Mobile behavior: cycle through states on tap
+  if (current === undefined) {
+    setStore("mirrors", key, "/");
+  } else if (current === "/") {
+    setStore("mirrors", key, "\\");
+  } else {
+    setStore("mirrors", key, undefined);
+  }
+}
+
 /** REFLECTION LOGIC (SWAPPED) **/
 // "/" => old "\": up => left, down => right, left => up, right => down
 // "\" => old "/": up => right, down => left, left => down, right => up
@@ -341,6 +356,7 @@ function App() {
               <div
                 class="grid-cell"
                 onMouseDown={(e) => handleMirrorClick(row - 2, col - 2, e)}
+                onTouchEnd={(e) => handleMirrorTouchEnd(row - 2, col - 2, e)}
                 onContextMenu={(e) => e.preventDefault()}
               >
                 <svg class="mirror-overlay">
