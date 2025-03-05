@@ -3,7 +3,7 @@ name: Build on Production Push
 on:
   push:
     branches:
-      - prod # Trigger on pushes to the prod branch
+      - main # Trigger on pushes to the prod branch
 
 jobs:
   build:
