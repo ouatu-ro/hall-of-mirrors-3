@@ -304,6 +304,11 @@ function App() {
           Clear Mirrors
         </button>
       </div>
+      <div>
+        4 = 2² | 9 = 3² | 12 = 2² × 3 | 16 = 2⁴ | 27 = 3³ | 48 = 2⁴ × 3 | 64 =
+        2⁶ | 112 = 2⁴ × 7 | 225 = 3² × 5² | 405 = 3⁴ × 5 | 2025 = 3⁴ × 5² | 3087
+        = 3² × 7³
+      </div>
       <div class="grid-container">
         {/* Render a totalSize × totalSize grid */}
         {Array.from({ length: totalSize }).map((_, row) =>
