@@ -282,25 +282,23 @@ createEffect(() => {
 
 const [showGreen, setShowGreen] = createSignal(true);
 const [showRed, setShowRed] = createSignal(true);
+const [showLineLength, setShowLineLength] = createSignal(false);
 
 function App() {
   return (
     <>
-      <div style="margin-bottom: 10px;">
+      <div style="margin-bottom: 10px; flex-wrap: wrap; display: flex; gap: 10px;">
         <button onClick={() => setShowGreen(!showGreen())}>
           {showGreen() ? "Hide Green Lines" : "Show Green Lines"}
         </button>
-        <button
-          onClick={() => setShowRed(!showRed())}
-          style="margin-left: 10px;"
-        >
+        <button onClick={() => setShowRed(!showRed())}>
           {showRed() ? "Hide Red Lines" : "Show Red Lines"}
         </button>
-        {/* Clear Mirrors Button */}
-        <button
-          onClick={() => setStore({ ...store, mirrors: {} })}
-          style="margin-left: 10px;"
-        >
+        <button onClick={() => setShowLineLength(!showLineLength())}>
+          {showLineLength() ? "Hide Line Length" : "Show Line Length"}
+        </button>
+
+        <button onClick={() => setStore({ ...store, mirrors: {} })}>
           Clear Mirrors
         </button>
       </div>
@@ -439,16 +437,38 @@ function App() {
               const y1 = start[0] * cellSize + offset;
               const x2 = end[1] * cellSize + offset;
               const y2 = end[0] * cellSize + offset;
+
+              // For horizontal or vertical lines
+              const length =
+                (x1 === x2 ? Math.abs(y2 - y1) : Math.abs(x2 - x1)) / cellSize;
+
+              // Calculate midpoint for the text
+              const midX = (x1 + x2) / 2;
+              const midY = (y1 + y2) / 2;
+
               return (
-                <line
-                  key={i}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke={color || "red"}
-                  stroke-width="2"
-                />
+                <g key={i}>
+                  <line
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={color || "red"}
+                    stroke-width="2"
+                  />
+                  {showLineLength() && (
+                    <text
+                      x={midX}
+                      y={midY}
+                      fill="black"
+                      font-size="14"
+                      textAnchor="middle"
+                      alignmentBaseline="middle"
+                    >
+                      {length}
+                    </text>
+                  )}
+                </g>
               );
             })}
         </svg>
