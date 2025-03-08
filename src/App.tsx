@@ -283,19 +283,63 @@ createEffect(() => {
 const [showGreen, setShowGreen] = createSignal(true);
 const [showRed, setShowRed] = createSignal(true);
 const [showLineLength, setShowLineLength] = createSignal(false);
-
+const [showFactorisation, setShowFactorisation] = createSignal(false);
+const factorisation = {
+  1: "1¹",
+  4: "2²",
+  5: "5¹",
+  9: "3²",
+  12: "2² × 3",
+  16: "2⁴",
+  27: "3³",
+  48: "2⁴ × 3",
+  64: "2⁶",
+  112: "2⁴ × 7",
+  225: "3² × 5²",
+  405: "3⁴ × 5",
+  2025: "3⁴ × 5²",
+  3087: "3² × 7³",
+};
 function App() {
+  createEffect(() => {
+    // listen for key events
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "a":
+          setShowGreen(!showGreen());
+          break;
+        case "s":
+          setShowRed(!showRed());
+          break;
+        case "d":
+          setShowLineLength(!showLineLength());
+          break;
+        case "f":
+          setShowFactorisation(!showFactorisation());
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
   return (
     <>
       <div style="margin-bottom: 10px; flex-wrap: wrap; display: flex; gap: 10px;">
         <button onClick={() => setShowGreen(!showGreen())}>
-          {showGreen() ? "Hide Green Lines" : "Show Green Lines"}
+          {showGreen() ? "Hide Green Lines(A)" : "Show Green Lines(A)"}
         </button>
         <button onClick={() => setShowRed(!showRed())}>
-          {showRed() ? "Hide Red Lines" : "Show Red Lines"}
+          {showRed() ? "Hide Red Lines(S)" : "Show Red Lines(S)"}
         </button>
         <button onClick={() => setShowLineLength(!showLineLength())}>
-          {showLineLength() ? "Hide Line Length" : "Show Line Length"}
+          {showLineLength() ? "Hide Line Length(D)" : "Show Line Length(D)"}
+        </button>
+        <button onClick={() => setShowFactorisation(!showFactorisation())}>
+          {showFactorisation()
+            ? "Hide Factorisation (F)"
+            : "Show Factorisation (F)"}
         </button>
 
         <button onClick={() => setStore({ ...store, mirrors: {} })}>
@@ -303,9 +347,11 @@ function App() {
         </button>
       </div>
       <div>
-        4 = 2² | 9 = 3² | 12 = 2² × 3 | 16 = 2⁴ | 27 = 3³ | 48 = 2⁴ × 3 | 64 =
-        2⁶ | 112 = 2⁴ × 7 | 225 = 3² × 5² | 405 = 3⁴ × 5 | 2025 = 3⁴ × 5² | 3087
-        = 3² × 7³
+        {Object.entries(factorisation).map(([key, value]) => (
+          <span key={key}>
+            {key} = {value} |{" "}
+          </span>
+        ))}
       </div>
       <div class="grid-container">
         {/* Render a totalSize × totalSize grid */}
@@ -337,7 +383,9 @@ function App() {
 
               return (
                 <div class="number">
-                  {fixedNum !== undefined && fixedNum}
+                  {fixedNum !== undefined && showFactorisation()
+                    ? factorisation[fixedNum]
+                    : fixedNum}
                   {laserOut && (
                     <span style={{ color: laserOut.color }}>
                       {" "}
