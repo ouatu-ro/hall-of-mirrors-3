@@ -23,29 +23,81 @@ type LaserOutput = {
 };
 
 /** CONFIGURABLE SIZES **/
-// E.g. a 10×10 center
 const centerSize = 10;
-// We add 2 rings on each side => totalSize = centerSize + 4
-//  (1 outer ring + 1 inner ring) × 2
 const totalSize = centerSize + 4;
-// Index of the last row/column
 const last = totalSize - 1;
 
-/** MAIN STORE (NO laser lines/outputs) **/
+// initial fixed numbers (used when the puzzle is unsolved)
+const initialFixedNumbers: FixedNumbers = {
+  top: { 4: 112, 6: 48, 7: 3087, 8: 9, 11: 1 },
+  left: { 5: 27, 9: 12, 10: 225 },
+  right: { 3: 4, 4: 27, 8: 16 },
+  bottom: { 2: 2025, 5: 12, 6: 64, 7: 5, 9: 405 },
+};
+
+// fixedNumbers2 with zeros marking the missing clues
+const fixedNumbers2: FixedNumbers = {
+  top: {
+    2: 0,
+    3: 0,
+    4: 112,
+    5: 0,
+    6: 48,
+    7: 3087,
+    8: 9,
+    9: 0,
+    10: 0,
+    11: 1,
+  },
+  left: {
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 27,
+    6: 0,
+    7: 0,
+    8: 0,
+    9: 12,
+    10: 225,
+    11: 0,
+  },
+  right: {
+    2: 0,
+    3: 4,
+    4: 27,
+    5: 0,
+    6: 0,
+    7: 0,
+    8: 16,
+    9: 0,
+    10: 0,
+    11: 0,
+  },
+  bottom: {
+    2: 2025,
+    3: 0,
+    4: 0,
+    5: 12,
+    6: 64,
+    7: 5,
+    8: 0,
+    9: 405,
+    10: 0,
+    11: 0,
+  },
+};
+
+/** MAIN STORE **/
 const [store, setStore] = createStore<{
   fixedNumbers: FixedNumbers;
   mirrors: { [key: string]: MirrorType };
-  lines: Line[]; // any original big lines you might have
+  lines: Line[];
+  allGreens: boolean;
 }>({
-  // Example: place numbers on top/bottom/left/right
-  fixedNumbers: {
-    top: { 4: 112, 6: 48, 7: 3087, 8: 9, 11: 1 },
-    left: { 5: 27, 9: 12, 10: 225 },
-    right: { 3: 4, 4: 27, 8: 16 },
-    bottom: { 2: 2025, 5: 12, 6: 64, 7: 5, 9: 405 },
-  },
+  fixedNumbers: initialFixedNumbers,
   mirrors: {},
   lines: [],
+  allGreens: false,
 });
 
 // Load stored mirrors from localStorage on app mount
@@ -54,7 +106,6 @@ onMount(() => {
   if (storedMirrors) {
     try {
       const parsed = JSON.parse(storedMirrors);
-      // Overwrite mirrors with the parsed object
       setStore("mirrors", { ...parsed });
     } catch (error) {
       console.error("Error parsing stored mirrors", error);
@@ -73,22 +124,27 @@ const [laserOutputs, setLaserOutputs] = createSignal<{
   [key: string]: LaserOutput;
 }>({});
 
+const [missingNumbers, setMissingNumbers] = createSignal<{
+  top: number[];
+  left: number[];
+  right: number[];
+  bottom: number[];
+  calculation: number;
+} | null>(null);
+
 /** MIRROR TOGGLING **/
 function handleMirrorClick(row: number, col: number, event: MouseEvent) {
-  event.preventDefault(); // no default context menu
-
+  event.preventDefault();
   const key = `${row},${col}`;
   const current = store.mirrors[key];
 
   if (event.button === 0) {
-    // Left-click => toggle "/"
     if (current === "/") {
       setStore("mirrors", key, undefined);
     } else {
       setStore("mirrors", key, "/");
     }
   } else if (event.button === 2) {
-    // Right-click => toggle "\"
     if (current === "\\") {
       setStore("mirrors", key, undefined);
     } else {
@@ -98,11 +154,9 @@ function handleMirrorClick(row: number, col: number, event: MouseEvent) {
 }
 
 function handleMirrorTouchEnd(row: number, col: number, event: TouchEvent) {
-  event.preventDefault(); // prevent emulated mouse events
+  event.preventDefault();
   const key = `${row},${col}`;
   const current = store.mirrors[key];
-
-  // Mobile behavior: cycle through states on tap
   if (current === undefined) {
     setStore("mirrors", key, "/");
   } else if (current === "/") {
@@ -112,27 +166,24 @@ function handleMirrorTouchEnd(row: number, col: number, event: TouchEvent) {
   }
 }
 
-/** REFLECTION LOGIC (SWAPPED) **/
-// "/" => old "\": up => left, down => right, left => up, right => down
-// "\" => old "/": up => right, down => left, left => down, right => up
+/** REFLECTION LOGIC **/
 function reflectDirection(
   dx: number,
   dy: number,
   mirror: MirrorType
 ): [number, number] {
   if (mirror === "/") {
-    if (dx === -1 && dy === 0) return [0, -1]; // up => left
-    if (dx === 1 && dy === 0) return [0, 1]; // down => right
-    if (dx === 0 && dy === -1) return [-1, 0]; // left => up
-    if (dx === 0 && dy === 1) return [1, 0]; // right => down
+    if (dx === -1 && dy === 0) return [0, -1];
+    if (dx === 1 && dy === 0) return [0, 1];
+    if (dx === 0 && dy === -1) return [-1, 0];
+    if (dx === 0 && dy === 1) return [1, 0];
   } else {
-    // mirror === "\\"
-    if (dx === -1 && dy === 0) return [0, 1]; // up => right
-    if (dx === 1 && dy === 0) return [0, -1]; // down => left
-    if (dx === 0 && dy === -1) return [1, 0]; // left => down
-    if (dx === 0 && dy === 1) return [-1, 0]; // right => up
+    if (dx === -1 && dy === 0) return [0, 1];
+    if (dx === 1 && dy === 0) return [0, -1];
+    if (dx === 0 && dy === -1) return [1, 0];
+    if (dx === 0 && dy === 1) return [-1, 0];
   }
-  return [dx, dy]; // fallback
+  return [dx, dy];
 }
 
 /** SHOOT A SINGLE LASER **/
@@ -150,10 +201,8 @@ function shootLaser(
 ): ShootResult {
   let row = startRow;
   let col = startCol;
-
   const segments: Line[] = [];
   let product = 1;
-
   let segStart: [number, number] = [row, col];
   let steps = 0;
 
@@ -162,16 +211,12 @@ function shootLaser(
     col += dy;
     steps++;
 
-    // Out of bounds => stop
     if (row < 0 || row > last || col < 0 || col > last) {
       segments.push({ start: segStart, end: [row, col] });
       product *= steps;
       return { segments, product, finalDot: [row, col] };
     }
 
-    // If we reach the "inner ring" (row=1|last-1 or col=1|last-1)
-    // that's not the same as the start => stop
-    // This is the "outer dot" logic in your puzzle
     if (
       (row === 1 || row === last - 1 || col === 1 || col === last - 1) &&
       !(row === startRow && col === startCol)
@@ -181,20 +226,13 @@ function shootLaser(
       return { segments, product, finalDot: [row, col] };
     }
 
-    // If in center => check for mirror
-    // center is row=2..(last-2), col=2..(last-2)
     if (row >= 2 && row <= last - 2 && col >= 2 && col <= last - 2) {
       const mirrorKey = `${row - 2},${col - 2}`;
       const mirror = store.mirrors[mirrorKey];
       if (mirror) {
-        // End the current segment
         segments.push({ start: segStart, end: [row, col] });
         product *= steps;
-
-        // Reflect
         [dx, dy] = reflectDirection(dx, dy, mirror);
-
-        // Start new segment
         segStart = [row, col];
         steps = 0;
       }
@@ -202,17 +240,12 @@ function shootLaser(
   }
 }
 
-/** WHERE TO PLACE THE FINAL PRODUCT IN THE OUTER RING? **/
+/** DETERMINE FINAL OUTPUT CELL **/
 function outerCellForDot(r: number, c: number): [number, number] {
-  // If dot = row=1 => final product at row=0
   if (r === 1) return [0, c];
-  // If dot = row=last-1 => final product at row=last
   if (r === last - 1) return [last, c];
-  // If dot = col=1 => final product at col=0
   if (c === 1) return [r, 0];
-  // If dot = col=last-1 => final product at col=last
   if (c === last - 1) return [r, last];
-  // fallback
   return [r, c];
 }
 
@@ -221,56 +254,52 @@ createEffect(() => {
   const newLines: Line[] = [];
   const newOutputs: { [key: string]: LaserOutput } = {};
 
-  // Shoot from top
+  // Top side
   for (const [colStr, value] of Object.entries(store.fixedNumbers.top)) {
     const col = +colStr;
     const { segments, product, finalDot } = shootLaser(1, col, 1, 0);
     const color = product === value ? "green" : "red";
     segments.forEach((s) => (s.color = color));
     newLines.push(...segments);
-
     const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
     if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
       newOutputs[`${nr},${nc}`] = { product, color };
     }
   }
 
-  // Bottom
+  // Bottom side
   for (const [colStr, value] of Object.entries(store.fixedNumbers.bottom)) {
     const col = +colStr;
     const { segments, product, finalDot } = shootLaser(last - 1, col, -1, 0);
     const color = product === value ? "green" : "red";
     segments.forEach((s) => (s.color = color));
     newLines.push(...segments);
-
     const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
     if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
       newOutputs[`${nr},${nc}`] = { product, color };
     }
   }
 
-  // Left
+  // Left side
   for (const [rowStr, value] of Object.entries(store.fixedNumbers.left)) {
     const row = +rowStr;
     const { segments, product, finalDot } = shootLaser(row, 1, 0, 1);
     const color = product === value ? "green" : "red";
     segments.forEach((s) => (s.color = color));
     newLines.push(...segments);
-
     const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
     if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
       newOutputs[`${nr},${nc}`] = { product, color };
     }
   }
 
-  // Right
+  // Right side
   for (const [rowStr, value] of Object.entries(store.fixedNumbers.right)) {
     const row = +rowStr;
     const { segments, product, finalDot } = shootLaser(row, last - 1, 0, -1);
     const color = product === value ? "green" : "red";
     segments.forEach((s) => (s.color = color));
     newLines.push(...segments);
-
     const [nr, nc] = outerCellForDot(finalDot[0], finalDot[1]);
     if (nr >= 0 && nr <= last && nc >= 0 && nc <= last) {
       newOutputs[`${nr},${nc}`] = { product, color };
@@ -278,12 +307,44 @@ createEffect(() => {
   }
   setLaserLines(newLines);
   setLaserOutputs(newOutputs);
+  setStore(
+    "allGreens",
+    newLines.every((line) => line.color === "green")
+  );
 });
 
-const [showGreen, setShowGreen] = createSignal(true);
-const [showRed, setShowRed] = createSignal(true);
-const [showLineLength, setShowLineLength] = createSignal(false);
-const [showFactorisation, setShowFactorisation] = createSignal(false);
+function handleCheckResult() {
+  setStore("fixedNumbers", fixedNumbers2);
+  const outputs = laserOutputs();
+
+  const missingTop = Object.keys(fixedNumbers2.top)
+    .filter((col) => fixedNumbers2.top[+col] === 0)
+    .map((col) => outputs[`0,${col}`]?.product ?? 0);
+  const missingBottom = Object.keys(fixedNumbers2.bottom)
+    .filter((col) => fixedNumbers2.bottom[+col] === 0)
+    .map((col) => outputs[`${last},${col}`]?.product ?? 0);
+  const missingLeft = Object.keys(fixedNumbers2.left)
+    .filter((row) => fixedNumbers2.left[+row] === 0)
+    .map((row) => outputs[`${row},0`]?.product ?? 0);
+  const missingRight = Object.keys(fixedNumbers2.right)
+    .filter((row) => fixedNumbers2.right[+row] === 0)
+    .map((row) => outputs[`${row},${last}`]?.product ?? 0);
+
+  const sumLeft = missingLeft.reduce((a, b) => a + b, 0);
+  const sumTop = missingTop.reduce((a, b) => a + b, 0);
+  const sumRight = missingRight.reduce((a, b) => a + b, 0);
+  const sumBottom = missingBottom.reduce((a, b) => a + b, 0);
+  const calculation = sumLeft * sumTop * sumRight * sumBottom;
+
+  setMissingNumbers({
+    top: missingTop,
+    left: missingLeft,
+    right: missingRight,
+    bottom: missingBottom,
+    calculation,
+  });
+}
+
 const factorisation = {
   1: "1¹",
   4: "2²",
@@ -300,9 +361,9 @@ const factorisation = {
   2025: "3⁴ × 5²",
   3087: "3² × 7³",
 };
+
 function App() {
   createEffect(() => {
-    // listen for key events
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case "a":
@@ -324,6 +385,12 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
+
+  const [showGreen, setShowGreen] = createSignal(true);
+  const [showRed, setShowRed] = createSignal(true);
+  const [showLineLength, setShowLineLength] = createSignal(false);
+  const [showFactorisation, setShowFactorisation] = createSignal(false);
+
   return (
     <>
       <div style="margin-bottom: 10px; flex-wrap: wrap; display: flex; gap: 10px;">
@@ -341,11 +408,16 @@ function App() {
             ? "Hide Factorisation (F)"
             : "Show Factorisation (F)"}
         </button>
-
         <button onClick={() => setStore({ ...store, mirrors: {} })}>
           Clear Mirrors
         </button>
+        {store.allGreens && (
+          <button class={"flash-animation"} onClick={handleCheckResult}>
+            Check Result
+          </button>
+        )}
       </div>
+
       <div>
         {Object.entries(factorisation).map(([key, value]) => (
           <span key={key}>
@@ -353,11 +425,29 @@ function App() {
           </span>
         ))}
       </div>
+
+      {/* Display missing numbers and the calculation if available */}
+      {missingNumbers() && (
+        <div class="missing-numbers" style="margin-top: 10px;">
+          <div>Missing numbers left: {missingNumbers().left.join(", ")}</div>
+          <div>Missing numbers top: {missingNumbers().top.join(", ")}</div>
+          <div>Missing numbers right: {missingNumbers().right.join(", ")}</div>
+          <div>
+            Missing numbers bottom: {missingNumbers().bottom.join(", ")}
+          </div>
+          <div>
+            Calculation: ({missingNumbers().left.join(" + ")}) * (
+            {missingNumbers().top.join(" + ")}) * (
+            {missingNumbers().right.join(" + ")}) * (
+            {missingNumbers().bottom.join(" + ")}) ={" "}
+            {missingNumbers().calculation}
+          </div>
+        </div>
+      )}
+
       <div class="grid-container">
-        {/* Render a totalSize × totalSize grid */}
         {Array.from({ length: totalSize }).map((_, row) =>
           Array.from({ length: totalSize }).map((_, col) => {
-            // Outer ring => row=0|last or col=0|last
             if (row === 0 || row === last || col === 0 || col === last) {
               let fixedNum: number | undefined = undefined;
               if (row === 0 && store.fixedNumbers.top[col] !== undefined) {
@@ -396,7 +486,6 @@ function App() {
               );
             }
 
-            // Inner ring dots
             if (
               (row === 1 ||
                 row === last - 1 ||
@@ -412,7 +501,6 @@ function App() {
               return <div class="dot">•</div>;
             }
 
-            // Center cells for mirrors
             return (
               <div
                 class="grid-cell"
@@ -447,7 +535,6 @@ function App() {
           })
         )}
 
-        {/* Original big lines (if any) */}
         <svg class="line-overlay">
           {store.lines.map(({ start, end, color }, i) => {
             const cellSize = 50;
@@ -470,7 +557,6 @@ function App() {
           })}
         </svg>
 
-        {/* Laser lines */}
         <svg class="line-overlay">
           {laserLines()
             .filter(
@@ -485,15 +571,10 @@ function App() {
               const y1 = start[0] * cellSize + offset;
               const x2 = end[1] * cellSize + offset;
               const y2 = end[0] * cellSize + offset;
-
-              // For horizontal or vertical lines
               const length =
                 (x1 === x2 ? Math.abs(y2 - y1) : Math.abs(x2 - x1)) / cellSize;
-
-              // Calculate midpoint for the text
               const midX = (x1 + x2) / 2;
               const midY = (y1 + y2) / 2;
-
               return (
                 <g key={i}>
                   <line

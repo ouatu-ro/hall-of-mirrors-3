@@ -52,3 +52,17 @@
   height: 100%;
   pointer-events: none;
 }
+
+.flash-animation {
+  animation: flash 0.1s ease-in-out 3;
+}
+
+@keyframes flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
