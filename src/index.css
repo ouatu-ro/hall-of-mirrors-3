@@ -1,47 +1,205 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --background-color: #121212;
+  --text-color: #e0e0e0;
+  --button-bg: #2a2a2a;
+  --button-hover: #3a3a3a;
+  --header-bg: #232323;
+  --grid-cell-bg: #2a2a2a;
+  --grid-border: #666;
+  --mirror-color: #00ffff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* App styles from App.module.css */
+.App {
+  text-align: center;
+}
+
+.logo {
+  animation: logo-spin infinite 20s linear;
+  height: 40vmin;
+  pointer-events: none;
+}
+
+.header {
+  background-color: var(--header-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: var(--text-color);
+  transition: background-color 0.3s ease;
+}
+
+.link {
+  color: #b318f0;
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark theme */
+.app.dark-theme {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Light theme */
+.app.light-theme {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Container */
+.container {
+  padding: 20px;
+  width: 100%;
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  min-height: auto;
+}
+
+/* Header */
+header {
+  width: 100%;
+  background-color: var(--header-bg);
+  color: var(--text-color);
+  padding: 0.8rem 1rem;
+  transition: background-color 0.3s ease;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+nav a {
+  color: var(--text-color);
+  text-decoration: none;
+  font-size: 1.1em;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+.nav-brand .home-link {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+/* Grid layout */
 .grid-container {
   position: relative;
   display: grid;
-  /* totalSize columns and rows, each ~50px */
-  grid-template-columns: repeat(
-    14,
-    50px
-  ); /* for centerSize=10 => totalSize=14 */
-  grid-template-rows: repeat(14, 50px);
-  width: 700px; /* 14×50 */
-  height: 700px;
-  border: 1px solid black;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-rows: repeat(14, minmax(0, 1fr));
+  width: 100%;
+  max-width: min(calc(100vw - 40px), 700px);
+  max-height: min(calc(100vw - 40px), 700px);
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--grid-border);
+  margin: 20px auto 40px auto;
+  padding: 0;
+  overflow: visible !important;
 }
 
-.number,
-.dot,
-.grid-cell {
+.number {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 100%;
+  height: 100%;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 18px;
+  color: var(--text-color);
 }
 
 .grid-cell {
   box-sizing: border-box;
-  border: 1px solid black;
-  background-color: white;
+  border: 1px solid var(--grid-border);
+  background-color: var(--grid-cell-bg);
   position: relative;
   cursor: pointer;
-}
-
-.dot {
-  font-size: 18px;
-  color: black;
+  width: 100%;
+  height: 100%;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .mirror-overlay {
   position: absolute;
   top: 0;
   left: 0;
-  width: 50px;
-  height: 50px;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+}
+
+.mirror-overlay line {
+  stroke: var(--mirror-color);
+  stroke-width: 2.5;
+  transition: stroke 0.3s ease;
 }
 
 .line-overlay {
@@ -51,18 +209,209 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
+  overflow: visible !important;
 }
 
+/* Button styles */
+.button-container {
+  margin: 10px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+button {
+  padding: 8px 16px;
+  margin: 4px;
+  border: none;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--button-hover);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--grid-border);
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.theme-toggle:hover {
+  background-color: var(--button-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* Flash animation - enhanced to pulse green indefinitely */
 .flash-animation {
-  animation: flash 0.1s ease-in-out 3;
+  animation: flash 0.1s ease-in-out 3, pulse-green 2s infinite 0.3s;
 }
 
 @keyframes flash {
   0%,
   100% {
-    opacity: 1;
+    background-color: #2a2a2a;
   }
   50% {
-    opacity: 0;
+    background-color: #4f9e4f;
+  }
+}
+
+@keyframes pulse-green {
+  0% {
+    background-color: #2a2a2a;
+  }
+  50% {
+    background-color: #4f9e4f;
+  }
+  100% {
+    background-color: #2a2a2a;
+  }
+}
+
+/* Mobile menu */
+.burger-menu {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 21px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+}
+
+.burger-menu span {
+  width: 100%;
+  height: 3px;
+  background-color: white;
+  transition: all 0.3s ease-in-out;
+}
+
+.burger-menu span.active:nth-child(1) {
+  transform: rotate(45deg) translate(6px, 6px);
+}
+
+.burger-menu span.active:nth-child(2) {
+  opacity: 0;
+}
+
+.burger-menu span.active:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Factorisation and missing numbers */
+.factorisation {
+  margin: 15px 0;
+  text-align: center;
+  max-width: 800px;
+  font-size: 15px;
+  color: var(--text-color);
+  transition: color 0.3s ease;
+}
+
+.missing-numbers {
+  margin: 15px 0;
+  padding: 10px;
+  border: 1px solid var(--grid-border);
+  border-radius: 5px;
+  background-color: var(--grid-cell-bg);
+  color: var(--text-color);
+  max-width: 800px;
+  transition: all 0.3s ease;
+}
+
+/* Laser output colors */
+.laser-output.green {
+  color: #4f9e4f;
+}
+
+.laser-output.red {
+  color: #ff4444;
+}
+
+@media (max-width: 768px) {
+  nav {
+    flex-wrap: wrap;
+  }
+
+  .nav-brand {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .burger-menu {
+    display: flex;
+  }
+
+  .nav-links {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 0;
+  }
+
+  .nav-links.active {
+    display: flex;
+  }
+
+  nav a {
+    width: 100%;
+    text-align: center;
+    padding: 0.8rem;
+  }
+
+  .grid-container {
+    max-width: min(calc(100vw - 20px), 700px);
+    max-height: min(calc(100vw - 20px), 700px);
+  }
+
+  .container {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .number,
+  .dot {
+    font-size: 12px;
+  }
+
+  .grid-container {
+    max-width: min(calc(100vw - 10px), 700px);
+    max-height: min(calc(100vw - 10px), 700px);
+  }
+
+  .container {
+    padding: 5px;
+  }
+
+  .button-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  button {
+    margin: 2px;
   }
 }
