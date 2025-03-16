@@ -476,29 +476,15 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
-  // Section highlighting function
-  const blinkSection = (sectionId: string) => {
-    const section = document.getElementById(sectionId);
-    if (section) {
-      section.style.backgroundColor = "#454545";
-      setTimeout(() => (section.style.backgroundColor = "#121212"), 500);
-    }
-  };
-
   // Handle section navigation with Ctrl+Click support
   const handleNavLinkClick = (e: MouseEvent, section: string) => {
-    // Only prevent default if Ctrl key is not pressed
+    // If Ctrl key is pressed, browser will handle opening in new tab
     if (!e.ctrlKey) {
       e.preventDefault();
-      const targetSection = document.getElementById(section);
-      if (targetSection) {
-        targetSection.scrollIntoView();
-        blinkSection(section);
-        history.pushState(null, "", `/#${section}`);
-        setNavActive(false); // Close mobile menu when clicking a link
-      }
+      // Navigate to the actual URL
+      window.location.href = `https://ouatu.ro/#${section}`;
+      setNavActive(false); // Close mobile menu when clicking a link
     }
-    // If Ctrl is pressed, let the default behavior happen (open in new tab)
   };
 
   // Handle home link with Ctrl+Click support
@@ -539,18 +525,6 @@ function App() {
       toggleTheme();
     }
 
-    // Handle URL hash navigation
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      setTimeout(() => {
-        const section = document.getElementById(hash);
-        if (section) {
-          section.scrollIntoView();
-          blinkSection(hash);
-        }
-      }, 100);
-    }
-
     // Check for stored mirrors
     const storedMirrors = localStorage.getItem("mirrors");
     if (storedMirrors) {
@@ -561,18 +535,6 @@ function App() {
         console.error("Error parsing stored mirrors", error);
       }
     }
-
-    // Handle popstate for back/forward navigation
-    window.addEventListener("popstate", () => {
-      const hash = window.location.hash.slice(1);
-      if (hash) {
-        const section = document.getElementById(hash);
-        if (section) {
-          section.scrollIntoView();
-          blinkSection(hash);
-        }
-      }
-    });
   });
 
   return (
