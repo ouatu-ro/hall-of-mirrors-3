@@ -548,7 +548,7 @@ function App() {
               class="home-link"
               onClick={handleHomeClick}
             >
-              Bogdan Develops
+              Bogdan Ouatu
             </a>
             <button
               class="burger-menu"
