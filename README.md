@@ -1,34 +1,52 @@
-## Usage
+# Jane Street Hall of Mirrors 3 - Interactive Puzzle Solver
 
-Those templates dependencies are maintained via [pnpm](https://pnpm.io) via `pnpm up -Lri`.
+An interactive implementation of Jane Street's [Hall of Mirrors 3 puzzle](https://www.janestreet.com/puzzles/hall-of-mirrors-3-index/). This web application allows you to solve the challenging mathematical logic puzzle online with an intuitive interface.
 
-This is the reason you see a `pnpm-lock.yaml`. That being said, any package manager will work. This file can be safely be removed once you clone a template.
+## About the Puzzle
+
+This is a digital version of the puzzle published by Jane Street Capital. The original puzzle challenges you to place mirrors in a grid and determine the path of light beams. Our implementation brings this brain teaser to life in your browser.
+
+## Features
+
+- Interactive grid-based interface
+- Visual representation of light beam paths
+- Step-by-step solving capability
+- Works on desktop and mobile devices
+
+## How to Play
+
+1. Visit the hosted version or run locally
+2. Interact with the grid to place mirrors
+3. See how light beams travel through the maze of mirrors
+4. Solve the puzzle by correctly placing all mirrors to satisfy the constraints
+
+## Development
+
+### Prerequisites
+
+- Node.js (v14+)
+- npm, yarn, or pnpm
+
+### Running Locally
 
 ```bash
-$ npm install # or pnpm install or yarn install
+# Install dependencies
+npm install
+# or
+pnpm install
+# or
+yarn install
+
+# Start the development server
+npm run dev
+# or
+pnpm dev
+# or
+yarn dev
 ```
 
-### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Available Scripts
+## License
 
-In the project directory, you can run:
-
-### `npm run dev` or `npm start`
-
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-The page will reload if you make edits.<br>
-
-### `npm run build`
-
-Builds the app for production to the `dist` folder.<br>
-It correctly bundles Solid in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
-
-## Deployment
-
-You can deploy the `dist` folder to any static host provider (netlify, surge, now, etc.)
+MIT

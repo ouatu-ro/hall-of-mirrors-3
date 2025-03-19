@@ -1,7 +1,7 @@
 {
-  "name": "vite-template-solid",
+  "name": "jane-street-hall-of-mirrors-puzzle",
   "version": "0.0.0",
-  "description": "",
+  "description": "Interactive version of Jane Street's Hall of Mirrors 3 puzzle. Solve this challenging math logic puzzle with this online tool.",
   "type": "module",
   "scripts": {
     "start": "vite",
