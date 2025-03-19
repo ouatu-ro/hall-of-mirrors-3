@@ -6,6 +6,15 @@ An interactive implementation of Jane Street's [Hall of Mirrors 3 puzzle](https:
 
 This is a digital version of the puzzle published by Jane Street Capital. The original puzzle challenges you to place mirrors in a grid and determine the path of light beams. Our implementation brings this brain teaser to life in your browser.
 
+## Technical Stack
+
+This project is built with [Solid.js](https://www.solidjs.com/), a declarative, efficient, and flexible JavaScript library for building user interfaces. Solid.js offers:
+
+- Reactive primitives without a virtual DOM
+- Lightning-fast performance with minimal overhead
+- Component-based architecture
+- Fine-grained reactivity for efficient updates
+
 ## Features
 
 - Interactive grid-based interface
