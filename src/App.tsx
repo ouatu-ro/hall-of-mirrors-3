@@ -608,6 +608,17 @@ function App() {
 
       <div class="container">
         <div class="button-container">
+          <button
+            onClick={() =>
+              window.open(
+                "https://www.janestreet.com/puzzles/hall-of-mirrors-3-index/",
+                "_blank"
+              )
+            }
+          >
+            Puzzle Link
+          </button>
+
           <button onClick={toggleTheme} class="theme-toggle">
             {isDarkTheme() ? (
               <>
