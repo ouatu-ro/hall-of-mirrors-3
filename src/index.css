@@ -415,3 +415,37 @@ button:hover {
     margin: 2px;
   }
 }
+
+@keyframes pulse-highlight-once {
+  0% {
+    box-shadow: 0 0 0px rgba(255, 255, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 255, 0, 1);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(255, 255, 0, 0.7);
+  }
+}
+
+.puzzle-highlight {
+  animation: pulse-highlight-once 1.2s ease-in-out 3;
+}
+
+.instructions {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  background-color: var(--grid-cell-bg);
+  border: 1px solid var(--grid-border);
+  border-radius: 8px;
+  color: var(--text-color);
+}
+
+.instructions h2 {
+  margin-bottom: 12px;
+  font-size: 1.5rem;
+  color: var(--text-color);
+}

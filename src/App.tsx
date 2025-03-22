@@ -536,7 +536,7 @@ function App() {
       }
     }
   });
-
+  const [showInstructions, setShowInstructions] = createSignal(false);
   return (
     <div class={isDarkTheme() ? "app dark-theme" : "app light-theme"}>
       {/* Header */}
@@ -608,17 +608,6 @@ function App() {
 
       <div class="container">
         <div class="button-container">
-          <button
-            onClick={() =>
-              window.open(
-                "https://www.janestreet.com/puzzles/hall-of-mirrors-3-index/",
-                "_blank"
-              )
-            }
-          >
-            Puzzle Link
-          </button>
-
           <button onClick={toggleTheme} class="theme-toggle">
             {isDarkTheme() ? (
               <>
@@ -632,6 +621,25 @@ function App() {
               </>
             )}
           </button>
+          <button
+            class="puzzle-highlight"
+            onClick={() => setShowInstructions(!showInstructions())}
+          >
+            {showInstructions() ? "Hide Instructions" : "Show Instructions"}
+          </button>
+
+          <button
+            class="puzzle-highlight"
+            onClick={() =>
+              window.open(
+                "https://www.janestreet.com/puzzles/hall-of-mirrors-3-index/",
+                "_blank"
+              )
+            }
+          >
+            Puzzle Link
+          </button>
+
           <button onClick={() => setShowGreen(!showGreen())}>
             {showGreen() ? "Hide Green Lines(A)" : "Show Green Lines(A)"}
           </button>
@@ -655,7 +663,34 @@ function App() {
             </button>
           )}
         </div>
-
+        <Show when={showInstructions()}>
+          <div class="instructions">
+            <h2>Instructions</h2>
+            <p>
+              The perimeter of a 10-by-10 square field is surrounded by lasers
+              pointing into the field. (Each laser begins half a unit from the
+              edge of the field, as indicated by the •’s.)
+            </p>
+            <p>
+              Some of the lasers have numbers beside them. Place diagonal
+              mirrors in some of the cells so that the product of the segment
+              lengths of a laser’s path matches the clue numbers. (For instance,
+              the segments for the “75” path in the example puzzle have lengths
+              5, 3, 5.) Mirrors may not be placed in orthogonally adjacent
+              cells.
+            </p>
+            <p>
+              Once finished, determine the missing clue numbers for the
+              perimeter, and calculate the sum of these clues for each side of
+              the square. The answer to this puzzle is the product of these four
+              sums.
+            </p>
+            <p>
+              The answer will be revealed inside this app when all the clues are
+              solved.
+            </p>
+          </div>
+        </Show>
         <div class="factorisation">
           {Object.entries(factorisation).map(([key, value], index) => (
             <span>
