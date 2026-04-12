@@ -24,7 +24,7 @@ This project is built with [Solid.js](https://www.solidjs.com/), a declarative, 
 
 ## How to Play
 
-1. Visit the hosted version or run locally
+1. Run the project locally
 2. Interact with the grid to place mirrors
 3. See how light beams travel through the maze of mirrors
 4. Solve the puzzle by correctly placing all mirrors to satisfy the constraints
